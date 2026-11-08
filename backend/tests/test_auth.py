@@ -35,13 +35,13 @@ class FakeDatabase:
     async def execute(self, query: str, parameters: tuple[Any, ...] = ()) -> FakeCursor:
         if query.lstrip().startswith("INSERT INTO users"):
             self.insert_parameters.append(parameters)
-            google_sub, email, name, picture, created_at, updated_at = parameters
+            google_sub, email, name, picture_url, created_at, updated_at = parameters
             previous = self.users.get(google_sub)
             self.users[google_sub] = {
                 "google_sub": google_sub,
                 "email": email,
                 "name": name,
-                "picture": picture,
+                "picture_url": picture_url,
                 "created_at": previous["created_at"] if previous else created_at,
                 "updated_at": updated_at,
             }

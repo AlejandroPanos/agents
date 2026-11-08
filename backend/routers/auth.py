@@ -80,12 +80,14 @@ async def _connect_db() -> AsyncIterator[AsyncConnection[dict[str, Any]]]:
     try:
         await connection.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                google_sub TEXT PRIMARY KEY,
-                email TEXT,
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                google_sub TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
                 name TEXT,
-                picture TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                picture_url TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                last_login_at TIMESTAMPTZ
             )
             """)
         yield connection
@@ -102,7 +104,7 @@ def _user_profile(user: Any) -> UserProfile:
         id=user["google_sub"],
         email=user["email"],
         name=user["name"],
-        picture=user["picture"],
+        picture=user["picture_url"],
     )
 
 
@@ -148,7 +150,7 @@ async def get_current_user(
     claims = _decode_session(session)
     async with _connect_db() as db:
         cursor = await db.execute(
-            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = %s",
+            "SELECT google_sub, email, name, picture_url FROM users WHERE google_sub = %s",
             (claims["sub"],),
         )
         user = await cursor.fetchone()
@@ -205,12 +207,12 @@ async def login_with_google(
     async with _connect_db() as db:
         await db.execute(
             """
-            INSERT INTO users (google_sub, email, name, picture, created_at, updated_at)
+            INSERT INTO users (google_sub, email, name, picture_url, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT(google_sub) DO UPDATE SET
                 email = excluded.email,
                 name = excluded.name,
-                picture = excluded.picture,
+                picture_url = excluded.picture_url,
                 updated_at = excluded.updated_at
             """,
             (
@@ -223,7 +225,7 @@ async def login_with_google(
             ),
         )
         cursor = await db.execute(
-            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = %s",
+            "SELECT google_sub, email, name, picture_url FROM users WHERE google_sub = %s",
             (google_sub,),
         )
         user = await cursor.fetchone()
