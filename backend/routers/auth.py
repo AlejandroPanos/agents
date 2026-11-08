@@ -1,7 +1,8 @@
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any
 
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
@@ -69,7 +70,7 @@ def _cookie_secure() -> bool:
 
 
 @asynccontextmanager
-async def _connect_db() -> AsyncIterator[AsyncConnection[dict[str, Any]]]:
+async def _connect_db() -> AsyncGenerator[AsyncConnection[dict[str, Any]], None]:
     database_connection = os.getenv("DATABASE_CONNECTION")
     if not database_connection:
         raise RuntimeError("DATABASE_CONNECTION is not configured")

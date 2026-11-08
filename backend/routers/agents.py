@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any, Literal
@@ -61,7 +61,7 @@ class AgentResponse(BaseModel):
 
 
 @asynccontextmanager
-async def _connect_agents_db() -> AsyncIterator[AsyncConnection[dict[str, Any]]]:
+async def _connect_agents_db() -> AsyncGenerator[AsyncConnection[dict[str, Any]], None]:
     async with _connect_db() as db:
         await db.execute("""
 			CREATE TABLE IF NOT EXISTS agents (
