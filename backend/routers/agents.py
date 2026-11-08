@@ -15,7 +15,7 @@ from routers.auth import UserProfile, _connect_db, get_current_user
 
 router = APIRouter()
 
-AgentProvider = Literal["anthropic", "openai"]
+AgentProvider = Literal["anthropic", "openai", "google", "deepseek"]
 AGENT_COLUMNS = """
 	id, name, description, system_prompt, provider, model,
 	temperature, max_tokens, created_at, updated_at
@@ -71,7 +71,7 @@ async def _connect_agents_db() -> AsyncGenerator[AsyncConnection[dict[str, Any]]
 				description TEXT,
 				system_prompt TEXT NOT NULL,
 				provider VARCHAR(20) NOT NULL
-					CHECK (provider IN ('anthropic', 'openai')),
+                    CHECK (provider IN ('anthropic', 'openai', 'google', 'deepseek')),
 				model VARCHAR(100) NOT NULL,
 				temperature NUMERIC(3, 2) NOT NULL DEFAULT 1.00
 					CHECK (temperature >= 0 AND temperature <= 2),

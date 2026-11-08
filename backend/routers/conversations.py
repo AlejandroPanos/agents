@@ -155,6 +155,12 @@ async def _generate_reply(
     agent: dict[str, Any], history: list[dict[str, str]], user_content: str
 ) -> tuple[str, int | None, int | None]:
     provider = agent["provider"]
+    if provider not in {"openai", "anthropic"}:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"Message generation for {provider} is not implemented",
+        )
+
     key_name = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
     api_key = os.getenv(key_name)
     if not api_key:
