@@ -122,7 +122,7 @@ def test_google_login_creates_user_and_session(
     set_cookie = response.headers["set-cookie"].lower()
     assert "httponly" in set_cookie
     assert "samesite=lax" in set_cookie
-    assert "path=/auth" in set_cookie
+    assert "path=/" in set_cookie
     assert "max-age=900" in set_cookie
     assert "secure" not in set_cookie
 
@@ -381,7 +381,7 @@ def test_logout_clears_the_session_cookie(
     assert "max-age=0" in set_cookie
     assert "httponly" in set_cookie
     assert "samesite=lax" in set_cookie
-    assert "path=/auth" in set_cookie
+    assert "path=/" in set_cookie
 
 
 def test_session_cookie_is_secure_by_default(

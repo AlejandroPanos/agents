@@ -114,7 +114,7 @@ def _set_session_cookie(response: Response, token: str, max_age: int) -> None:
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
-        path="/auth",
+        path="/",
     )
 
 
@@ -255,7 +255,7 @@ async def get_me(
 async def logout(response: Response) -> None:
     response.delete_cookie(
         key=SESSION_COOKIE_NAME,
-        path="/auth",
+        path="/",
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
