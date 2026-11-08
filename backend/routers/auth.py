@@ -1,16 +1,16 @@
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Annotated, Any, AsyncIterator
 
-import aiosqlite
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from google.auth.exceptions import TransportError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from pydantic import BaseModel, Field
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
 from starlette.concurrency import run_in_threadpool
 from dotenv import load_dotenv
 
@@ -68,17 +68,16 @@ def _cookie_secure() -> bool:
     }
 
 
-def _database_path() -> Path:
-    return Path(os.getenv("DATABASE_PATH", "users.db"))
-
-
 @asynccontextmanager
-async def _connect_db() -> AsyncIterator[aiosqlite.Connection]:
-    database_path = _database_path()
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = await aiosqlite.connect(database_path)
+async def _connect_db() -> AsyncIterator[AsyncConnection[dict[str, Any]]]:
+    database_connection = os.getenv("DATABASE_CONNECTION")
+    if not database_connection:
+        raise RuntimeError("DATABASE_CONNECTION is not configured")
+
+    connection = await AsyncConnection.connect(
+        database_connection, row_factory=dict_row
+    )
     try:
-        connection.row_factory = aiosqlite.Row
         await connection.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 google_sub TEXT PRIMARY KEY,
@@ -90,6 +89,10 @@ async def _connect_db() -> AsyncIterator[aiosqlite.Connection]:
             )
             """)
         yield connection
+        await connection.commit()
+    except Exception:
+        await connection.rollback()
+        raise
     finally:
         await connection.close()
 
@@ -144,11 +147,11 @@ async def get_current_user(
 
     claims = _decode_session(session)
     async with _connect_db() as db:
-        async with db.execute(
-            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = ?",
+        cursor = await db.execute(
+            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = %s",
             (claims["sub"],),
-        ) as cursor:
-            user = await cursor.fetchone()
+        )
+        user = await cursor.fetchone()
 
     if user is None:
         raise HTTPException(
@@ -203,7 +206,7 @@ async def login_with_google(
         await db.execute(
             """
             INSERT INTO users (google_sub, email, name, picture, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT(google_sub) DO UPDATE SET
                 email = excluded.email,
                 name = excluded.name,
@@ -219,12 +222,11 @@ async def login_with_google(
                 timestamp,
             ),
         )
-        await db.commit()
-        async with db.execute(
-            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = ?",
+        cursor = await db.execute(
+            "SELECT google_sub, email, name, picture FROM users WHERE google_sub = %s",
             (google_sub,),
-        ) as cursor:
-            user = await cursor.fetchone()
+        )
+        user = await cursor.fetchone()
 
     ttl = _session_ttl()
     issued_at = datetime.now(timezone.utc)

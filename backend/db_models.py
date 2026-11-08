@@ -152,9 +152,7 @@ class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
         CheckConstraint("role IN ('user', 'assistant')", name="ck_messages_role"),
-        Index(
-            "idx_messages_conversation_created", "conversation_id", "created_at"
-        ),
+        Index("idx_messages_conversation_created", "conversation_id", "created_at"),
     )
 
     id: Mapped[PythonUUID] = mapped_column(
