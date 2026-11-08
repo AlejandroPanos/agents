@@ -291,7 +291,8 @@ def test_message_requires_provider_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, database = conversation_client
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    database.agents[AGENT_ID]["provider"] = "google"
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     created = client.post(f"/agents/{AGENT_ID}/conversations")
     conversation_id = created.json()["id"]
 
@@ -300,15 +301,15 @@ def test_message_requires_provider_configuration(
     )
 
     assert response.status_code == 503
-    assert response.json()["detail"] == "OpenAI API is not configured"
+    assert response.json()["detail"] == "Google API is not configured"
     assert database.messages == []
 
 
-def test_message_rejects_providers_without_generation_adapters(
+def test_message_rejects_unknown_provider(
     conversation_client: tuple[TestClient, FakeDatabase],
 ) -> None:
     client, database = conversation_client
-    database.agents[AGENT_ID]["provider"] = "google"
+    database.agents[AGENT_ID]["provider"] = "unknown"
     created = client.post(f"/agents/{AGENT_ID}/conversations")
     conversation_id = created.json()["id"]
 
@@ -318,13 +319,20 @@ def test_message_rejects_providers_without_generation_adapters(
 
     assert response.status_code == 501
     assert response.json()["detail"] == (
-        "Message generation for google is not implemented"
+        "Message generation for unknown is not implemented"
     )
     assert database.messages == []
 
 
 @pytest.mark.parametrize(
-    ("provider", "key_name", "url", "provider_result", "input_tokens", "output_tokens"),
+    (
+        "provider",
+        "key_name",
+        "url",
+        "provider_result",
+        "input_tokens",
+        "output_tokens",
+    ),
     [
         (
             "openai",
@@ -347,6 +355,31 @@ def test_message_rejects_providers_without_generation_adapters(
             },
             8,
             5,
+        ),
+        (
+            "deepseek",
+            "DEEPSEEK_API_KEY",
+            "https://api.deepseek.com/chat/completions",
+            {
+                "choices": [{"message": {"content": "DeepSeek reply"}}],
+                "usage": {"prompt_tokens": 9, "completion_tokens": 6},
+            },
+            9,
+            6,
+        ),
+        (
+            "google",
+            "GOOGLE_API_KEY",
+            "https://generativelanguage.googleapis.com/v1beta/models/gpt-test:generateContent",
+            {
+                "candidates": [{"content": {"parts": [{"text": "Google reply"}]}}],
+                "usageMetadata": {
+                    "promptTokenCount": 10,
+                    "candidatesTokenCount": 7,
+                },
+            },
+            10,
+            7,
         ),
     ],
 )
@@ -400,12 +433,21 @@ def test_message_provider_adapters(
     assert response.json()["assistant_message"]["input_tokens"] == input_tokens
     assert response.json()["assistant_message"]["output_tokens"] == output_tokens
     assert requests[0]["url"] == url
-    if provider == "openai":
+    if provider in {"openai", "deepseek"}:
         assert requests[0]["headers"]["Authorization"] == "Bearer test-provider-key"
         assert requests[0]["json"]["messages"][0] == {
             "role": "system",
             "content": "Be helpful.",
         }
-    else:
+    elif provider == "anthropic":
         assert requests[0]["headers"]["x-api-key"] == "test-provider-key"
         assert requests[0]["json"]["system"] == "Be helpful."
+    else:
+        assert requests[0]["headers"]["x-goog-api-key"] == "test-provider-key"
+        assert requests[0]["json"]["systemInstruction"] == {
+            "parts": [{"text": "Be helpful."}]
+        }
+        assert requests[0]["json"]["contents"] == [
+            {"role": "user", "parts": [{"text": "Hi"}]}
+        ]
+        assert requests[0]["json"]["generationConfig"]["maxOutputTokens"] == 512

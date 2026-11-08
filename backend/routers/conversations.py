@@ -155,24 +155,38 @@ async def _generate_reply(
     agent: dict[str, Any], history: list[dict[str, str]], user_content: str
 ) -> tuple[str, int | None, int | None]:
     provider = agent["provider"]
-    if provider not in {"openai", "anthropic"}:
+    key_names = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "google": "GOOGLE_API_KEY",
+        "deepseek": "DEEPSEEK_API_KEY",
+    }
+    if provider not in key_names:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail=f"Message generation for {provider} is not implemented",
         )
 
-    key_name = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
-    api_key = os.getenv(key_name)
+    api_key = os.getenv(key_names[provider])
     if not api_key:
-        provider_name = "OpenAI" if provider == "openai" else "Anthropic"
+        provider_name = {
+            "openai": "OpenAI",
+            "anthropic": "Anthropic",
+            "google": "Google",
+            "deepseek": "DeepSeek",
+        }[provider]
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"{provider_name} API is not configured",
         )
 
     messages = [*history, {"role": "user", "content": user_content}]
-    if provider == "openai":
-        url = "https://api.openai.com/v1/chat/completions"
+    if provider in {"openai", "deepseek"}:
+        url = (
+            "https://api.openai.com/v1/chat/completions"
+            if provider == "openai"
+            else "https://api.deepseek.com/chat/completions"
+        )
         headers = {"Authorization": f"Bearer {api_key}"}
         payload = {
             "model": agent["model"],
@@ -183,7 +197,7 @@ async def _generate_reply(
             "temperature": float(agent["temperature"]),
             "max_tokens": agent["max_tokens"],
         }
-    else:
+    elif provider == "anthropic":
         url = "https://api.anthropic.com/v1/messages"
         headers = {
             "x-api-key": api_key,
@@ -196,18 +210,39 @@ async def _generate_reply(
             "temperature": float(agent["temperature"]),
             "max_tokens": agent["max_tokens"],
         }
+    else:
+        model_id = agent["model"].removeprefix("models/")
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_id}:generateContent"
+        )
+        headers = {"x-goog-api-key": api_key}
+        payload = {
+            "systemInstruction": {"parts": [{"text": agent["system_prompt"]}]},
+            "contents": [
+                {
+                    "role": "user" if message["role"] == "user" else "model",
+                    "parts": [{"text": message["content"]}],
+                }
+                for message in messages
+            ],
+            "generationConfig": {
+                "temperature": float(agent["temperature"]),
+                "maxOutputTokens": agent["max_tokens"],
+            },
+        }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
-        if provider == "openai":
+        if provider in {"openai", "deepseek"}:
             reply = result["choices"][0]["message"]["content"]
             usage = result.get("usage", {})
             input_tokens = usage.get("prompt_tokens")
             output_tokens = usage.get("completion_tokens")
-        else:
+        elif provider == "anthropic":
             reply = "".join(
                 block["text"]
                 for block in result["content"]
@@ -216,6 +251,15 @@ async def _generate_reply(
             usage = result.get("usage", {})
             input_tokens = usage.get("input_tokens")
             output_tokens = usage.get("output_tokens")
+        else:
+            reply = "".join(
+                part["text"]
+                for part in result["candidates"][0]["content"]["parts"]
+                if "text" in part
+            )
+            usage = result.get("usageMetadata", {})
+            input_tokens = usage.get("promptTokenCount")
+            output_tokens = usage.get("candidatesTokenCount")
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
