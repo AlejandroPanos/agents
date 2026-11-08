@@ -12,6 +12,9 @@ from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
 
