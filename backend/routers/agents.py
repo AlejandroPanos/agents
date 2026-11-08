@@ -107,6 +107,24 @@ async def _database_user_id(
     return row["id"]
 
 
+async def _ensure_model_available(
+    db: AsyncConnection[dict[str, Any]], provider: AgentProvider, model_id: str
+) -> None:
+    cursor = await db.execute(
+        """
+        SELECT 1
+        FROM models
+        WHERE provider = %s AND model_id = %s AND enabled = TRUE
+        """,
+        (provider, model_id),
+    )
+    if await cursor.fetchone() is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="The selected provider and model are not available",
+        )
+
+
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
 async def create_agent(
     body: AgentCreate,
@@ -115,6 +133,7 @@ async def create_agent(
     try:
         async with _connect_agents_db() as db:
             user_id = await _database_user_id(db, user)
+            await _ensure_model_available(db, body.provider, body.model)
             cursor = await db.execute(
                 f"""
 				INSERT INTO agents
@@ -194,6 +213,23 @@ async def update_agent(
     try:
         async with _connect_agents_db() as db:
             user_id = await _database_user_id(db, user)
+            if "provider" in changes or "model" in changes:
+                current_cursor = await db.execute(
+                    """
+                    SELECT provider, model
+                    FROM agents
+                    WHERE id = %s AND user_id = %s
+                    """,
+                    (agent_id, user_id),
+                )
+                current_agent = await current_cursor.fetchone()
+                if current_agent is None:
+                    raise _not_found()
+                await _ensure_model_available(
+                    db,
+                    changes.get("provider", current_agent["provider"]),
+                    changes.get("model", current_agent["model"]),
+                )
             cursor = await db.execute(
                 f"""
 				UPDATE agents

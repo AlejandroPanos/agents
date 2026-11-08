@@ -33,6 +33,12 @@ class FakeDatabase:
         self.rows: dict[UUID, dict[str, Any]] = {}
         self.queries: list[tuple[str, tuple[Any, ...]]] = []
         self.user_ids = {"google-user-1": AUTH_USER_ID}
+        self.models = {
+            ("openai", "gpt-test"): True,
+            ("google", "gemini-test"): True,
+            ("deepseek", "deepseek-test"): True,
+            ("anthropic", "claude-disabled"): False,
+        }
 
     async def __aenter__(self) -> FakeDatabase:
         return self
@@ -49,6 +55,11 @@ class FakeDatabase:
         if normalized.startswith("SELECT id FROM users"):
             user_id = self.user_ids.get(parameters[0])
             return FakeCursor({"id": user_id} if user_id is not None else None)
+        if normalized.startswith("SELECT 1 FROM models"):
+            provider, model_id = parameters
+            if self.models.get((provider, model_id), False):
+                return FakeCursor({"?column?": 1})
+            return FakeCursor()
         if normalized.startswith("INSERT INTO agents"):
             user_id, name, description, system_prompt, provider, model = parameters
             row = self.make_row(
@@ -244,16 +255,65 @@ def test_agent_create_validates_fields(
     assert client.post("/agents", json=payload).status_code == 422
 
 
-@pytest.mark.parametrize("provider", ["google", "deepseek"])
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [("google", "gemini-test"), ("deepseek", "deepseek-test")],
+)
 def test_agent_create_accepts_added_providers(
-    agent_client: tuple[TestClient, FakeDatabase], provider: str
+    agent_client: tuple[TestClient, FakeDatabase], provider: str, model: str
 ) -> None:
     client, _ = agent_client
 
-    response = client.post("/agents", json=agent_payload(provider=provider))
+    response = client.post(
+        "/agents", json=agent_payload(provider=provider, model=model)
+    )
 
     assert response.status_code == 201
     assert response.json()["provider"] == provider
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [
+        ("openai", "unknown-model"),
+        ("google", "gpt-test"),
+        ("anthropic", "claude-disabled"),
+    ],
+)
+def test_agent_create_rejects_unavailable_model(
+    agent_client: tuple[TestClient, FakeDatabase], provider: str, model: str
+) -> None:
+    client, database = agent_client
+
+    response = client.post(
+        "/agents", json=agent_payload(provider=provider, model=model)
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "The selected provider and model are not available"
+    )
+    assert not any(
+        query.startswith("INSERT INTO agents") for query, _ in database.queries
+    )
+
+
+def test_agent_patch_rejects_unavailable_model_selection(
+    agent_client: tuple[TestClient, FakeDatabase],
+) -> None:
+    client, database = agent_client
+    created = client.post("/agents", json=agent_payload())
+    agent_id = created.json()["id"]
+
+    response = client.patch(
+        f"/agents/{agent_id}", json={"provider": "google", "model": "gpt-test"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "The selected provider and model are not available"
+    )
+    assert database.rows[UUID(agent_id)]["provider"] == "openai"
 
 
 def test_agent_patch_and_pagination_validate_input(
