@@ -304,6 +304,25 @@ def test_message_requires_provider_configuration(
     assert database.messages == []
 
 
+def test_message_rejects_providers_without_generation_adapters(
+    conversation_client: tuple[TestClient, FakeDatabase],
+) -> None:
+    client, database = conversation_client
+    database.agents[AGENT_ID]["provider"] = "google"
+    created = client.post(f"/agents/{AGENT_ID}/conversations")
+    conversation_id = created.json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/messages", json={"content": "Hello"}
+    )
+
+    assert response.status_code == 501
+    assert response.json()["detail"] == (
+        "Message generation for google is not implemented"
+    )
+    assert database.messages == []
+
+
 @pytest.mark.parametrize(
     ("provider", "key_name", "url", "provider_result", "input_tokens", "output_tokens"),
     [

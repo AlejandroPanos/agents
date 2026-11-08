@@ -244,6 +244,18 @@ def test_agent_create_validates_fields(
     assert client.post("/agents", json=payload).status_code == 422
 
 
+@pytest.mark.parametrize("provider", ["google", "deepseek"])
+def test_agent_create_accepts_added_providers(
+    agent_client: tuple[TestClient, FakeDatabase], provider: str
+) -> None:
+    client, _ = agent_client
+
+    response = client.post("/agents", json=agent_payload(provider=provider))
+
+    assert response.status_code == 201
+    assert response.json()["provider"] == provider
+
+
 def test_agent_patch_and_pagination_validate_input(
     agent_client: tuple[TestClient, FakeDatabase],
 ) -> None:
