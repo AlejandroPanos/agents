@@ -66,7 +66,7 @@ async def _connect_agents_db() -> AsyncIterator[AsyncConnection[dict[str, Any]]]
         await db.execute("""
 			CREATE TABLE IF NOT EXISTS agents (
 				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-				user_id TEXT NOT NULL REFERENCES users(google_sub) ON DELETE CASCADE,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 				name VARCHAR(100) NOT NULL,
 				description TEXT,
 				system_prompt TEXT NOT NULL,
@@ -91,6 +91,22 @@ def _not_found() -> HTTPException:
     )
 
 
+async def _database_user_id(
+    db: AsyncConnection[dict[str, Any]], user: UserProfile
+) -> UUID:
+    cursor = await db.execute(
+        "SELECT id FROM users WHERE google_sub = %s",
+        (user.id,),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists",
+        )
+    return row["id"]
+
+
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
 async def create_agent(
     body: AgentCreate,
@@ -98,6 +114,7 @@ async def create_agent(
 ) -> AgentResponse:
     try:
         async with _connect_agents_db() as db:
+            user_id = await _database_user_id(db, user)
             cursor = await db.execute(
                 f"""
 				INSERT INTO agents
@@ -106,7 +123,7 @@ async def create_agent(
 				RETURNING {AGENT_COLUMNS}
 				""",
                 (
-                    user.id,
+                    user_id,
                     body.name,
                     body.description,
                     body.system_prompt,
@@ -130,6 +147,7 @@ async def list_agents(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[AgentResponse]:
     async with _connect_agents_db() as db:
+        user_id = await _database_user_id(db, user)
         cursor = await db.execute(
             f"""
 			SELECT {AGENT_COLUMNS}
@@ -138,7 +156,7 @@ async def list_agents(
 			ORDER BY created_at DESC, id
 			LIMIT %s OFFSET %s
 			""",
-            (user.id, limit, offset),
+            (user_id, limit, offset),
         )
         agents = await cursor.fetchall()
     return [AgentResponse.model_validate(agent) for agent in agents]
@@ -150,13 +168,14 @@ async def get_agent(
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> AgentResponse:
     async with _connect_agents_db() as db:
+        user_id = await _database_user_id(db, user)
         cursor = await db.execute(
             f"""
 			SELECT {AGENT_COLUMNS}
 			FROM agents
 			WHERE id = %s AND user_id = %s
 			""",
-            (agent_id, user.id),
+            (agent_id, user_id),
         )
         agent = await cursor.fetchone()
     if agent is None:
@@ -174,6 +193,7 @@ async def update_agent(
     assignments = ", ".join(f"{field} = %s" for field in changes)
     try:
         async with _connect_agents_db() as db:
+            user_id = await _database_user_id(db, user)
             cursor = await db.execute(
                 f"""
 				UPDATE agents
@@ -181,7 +201,7 @@ async def update_agent(
 				WHERE id = %s AND user_id = %s
 				RETURNING {AGENT_COLUMNS}
 				""",
-                (*changes.values(), agent_id, user.id),
+                (*changes.values(), agent_id, user_id),
             )
             agent = await cursor.fetchone()
     except UniqueViolation as exc:
@@ -200,9 +220,10 @@ async def delete_agent(
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> Response:
     async with _connect_agents_db() as db:
+        user_id = await _database_user_id(db, user)
         cursor = await db.execute(
             "DELETE FROM agents WHERE id = %s AND user_id = %s RETURNING id",
-            (agent_id, user.id),
+            (agent_id, user_id),
         )
         deleted_agent = await cursor.fetchone()
     if deleted_agent is None:

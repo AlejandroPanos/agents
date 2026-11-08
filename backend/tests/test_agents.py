@@ -13,6 +13,9 @@ import routers.agents as agents
 from main import app
 from routers.auth import UserProfile, get_current_user
 
+AUTH_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+OTHER_USER_ID = UUID("00000000-0000-0000-0000-000000000002")
+
 
 class FakeCursor:
     def __init__(self, row: dict[str, Any] | list[dict[str, Any]] | None = None):
@@ -29,6 +32,7 @@ class FakeDatabase:
     def __init__(self) -> None:
         self.rows: dict[UUID, dict[str, Any]] = {}
         self.queries: list[tuple[str, tuple[Any, ...]]] = []
+        self.user_ids = {"google-user-1": AUTH_USER_ID}
 
     async def __aenter__(self) -> FakeDatabase:
         return self
@@ -42,6 +46,9 @@ class FakeDatabase:
 
         if normalized.startswith("CREATE TABLE"):
             return FakeCursor()
+        if normalized.startswith("SELECT id FROM users"):
+            user_id = self.user_ids.get(parameters[0])
+            return FakeCursor({"id": user_id} if user_id is not None else None)
         if normalized.startswith("INSERT INTO agents"):
             user_id, name, description, system_prompt, provider, model = parameters
             row = self.make_row(
@@ -89,7 +96,7 @@ class FakeDatabase:
 
     @staticmethod
     def make_row(
-        user_id: str,
+        user_id: UUID,
         name: str,
         description: str | None,
         system_prompt: str,
@@ -183,8 +190,17 @@ def test_agent_crud_endpoints(
             ("INSERT INTO agents", "SELECT", "UPDATE agents", "DELETE FROM agents")
         )
     ]
-    assert all("user_id" in query for query, _ in scoped_queries)
-    assert all("google-user-1" in parameters for _, parameters in scoped_queries)
+    agent_queries = [
+        (query, parameters)
+        for query, parameters in scoped_queries
+        if "FROM agents" in query or query.startswith("INSERT INTO agents")
+    ]
+    assert all("user_id" in query for query, _ in agent_queries)
+    assert all(AUTH_USER_ID in parameters for _, parameters in agent_queries)
+    assert any(
+        query.startswith("SELECT id FROM users") and parameters == ("google-user-1",)
+        for query, parameters in database.queries
+    )
 
 
 def test_agent_routes_hide_agents_owned_by_other_users(
@@ -192,7 +208,7 @@ def test_agent_routes_hide_agents_owned_by_other_users(
 ) -> None:
     client, database = agent_client
     other_agent = database.make_row(
-        "another-google-user",
+        OTHER_USER_ID,
         "Private agent",
         None,
         "Do not expose me.",
