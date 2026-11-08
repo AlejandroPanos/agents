@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     FetchedValue,
     ForeignKey,
+    Boolean,
     Index,
     Integer,
     Numeric,
@@ -57,11 +58,53 @@ class User(Base):
     )
 
 
+class AIModel(Base):
+    __tablename__ = "models"
+    __table_args__ = (
+        CheckConstraint(
+            "provider IN ('anthropic', 'openai', 'google', 'deepseek')",
+            name="ck_models_provider",
+        ),
+        CheckConstraint("max_output_tokens > 0", name="ck_models_max_output_tokens"),
+        CheckConstraint(
+            "max_temperature > 0 AND max_temperature <= 2",
+            name="ck_models_max_temperature",
+        ),
+        UniqueConstraint("provider", "model_id", name="uq_models_provider_model_id"),
+    )
+
+    id: Mapped[PythonUUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    max_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_temperature: Mapped[Decimal] = mapped_column(
+        Numeric(3, 2), nullable=False, server_default=text("1.00")
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("TRUE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        server_onupdate=FetchedValue(),
+    )
+
+
 class Agent(Base):
     __tablename__ = "agents"
     __table_args__ = (
         CheckConstraint(
-            "provider IN ('anthropic', 'openai')", name="ck_agents_provider"
+            "provider IN ('anthropic', 'openai', 'google', 'deepseek')",
+            name="agents_provider_check",
         ),
         CheckConstraint(
             "temperature >= 0 AND temperature <= 2", name="ck_agents_temperature"
