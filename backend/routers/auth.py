@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 import jwt
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from google.auth.exceptions import TransportError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
@@ -14,6 +14,8 @@ from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from starlette.concurrency import run_in_threadpool
 from dotenv import load_dotenv
+
+from rate_limit import ENDPOINT_RATE_LIMIT, limiter
 
 load_dotenv()
 
@@ -165,7 +167,9 @@ async def get_current_user(
 
 
 @router.post("/google", response_model=UserProfile)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def login_with_google(
+    request: Request,
     body: GoogleLoginRequest,
     response: Response,
 ) -> UserProfile:
@@ -248,14 +252,17 @@ async def login_with_google(
 
 
 @router.get("/me", response_model=UserProfile)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def get_me(
+    request: Request,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> UserProfile:
     return user
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response) -> None:
+@limiter.limit(ENDPOINT_RATE_LIMIT)
+async def logout(request: Request, response: Response) -> None:
     response.delete_cookie(
         key=SESSION_COOKIE_NAME,
         path="/",

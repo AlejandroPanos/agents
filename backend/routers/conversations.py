@@ -8,10 +8,19 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from pydantic import BaseModel, Field, field_validator
 from psycopg import AsyncConnection
 
+from rate_limit import ENDPOINT_RATE_LIMIT, limiter
 from routers.agents import _connect_agents_db, _database_user_id
 from routers.auth import UserProfile, get_current_user
 
@@ -279,7 +288,9 @@ async def _generate_reply(
     response_model=ConversationResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def create_conversation(
+    request: Request,
     agent_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
     body: ConversationCreate | None = None,
@@ -302,7 +313,9 @@ async def create_conversation(
 @router.get(
     "/agents/{agent_id}/conversations", response_model=list[ConversationResponse]
 )
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def list_conversations(
+    request: Request,
     agent_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -329,7 +342,9 @@ async def list_conversations(
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationWithMessages)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def get_conversation(
+    request: Request,
     conversation_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> ConversationWithMessages:
@@ -354,7 +369,9 @@ async def get_conversation(
 @router.delete(
     "/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT
 )
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def delete_conversation(
+    request: Request,
     conversation_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> Response:
@@ -373,7 +390,9 @@ async def delete_conversation(
 @router.post(
     "/conversations/{conversation_id}/messages", response_model=SendMessageResponse
 )
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def send_message(
+    request: Request,
     conversation_id: UUID,
     body: SendMessageRequest,
     user: Annotated[UserProfile, Depends(get_current_user)],
@@ -450,7 +469,9 @@ async def send_message(
 @router.get(
     "/conversations/{conversation_id}/messages", response_model=list[MessageResponse]
 )
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def list_messages(
+    request: Request,
     conversation_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,

@@ -1,8 +1,9 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from rate_limit import ENDPOINT_RATE_LIMIT, limiter
 from routers.auth import _connect_db
 
 router = APIRouter()
@@ -21,7 +22,8 @@ class ModelsResponse(BaseModel):
 
 
 @router.get("/models", response_model=ModelsResponse)
-async def get_models() -> ModelsResponse:
+@limiter.limit(ENDPOINT_RATE_LIMIT)
+async def get_models(request: Request) -> ModelsResponse:
     async with _connect_db() as db:
         cursor = await db.execute("""
             SELECT provider, model_id, display_name,

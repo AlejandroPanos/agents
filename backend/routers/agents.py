@@ -6,11 +6,12 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, model_validator
 from psycopg import AsyncConnection
 from psycopg.errors import UniqueViolation
 
+from rate_limit import ENDPOINT_RATE_LIMIT, limiter
 from routers.auth import UserProfile, _connect_db, get_current_user
 
 router = APIRouter()
@@ -126,7 +127,9 @@ async def _ensure_model_available(
 
 
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def create_agent(
+    request: Request,
     body: AgentCreate,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> AgentResponse:
@@ -160,7 +163,9 @@ async def create_agent(
 
 
 @router.get("", response_model=list[AgentResponse])
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def list_agents(
+    request: Request,
     user: Annotated[UserProfile, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -182,7 +187,9 @@ async def list_agents(
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def get_agent(
+    request: Request,
     agent_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> AgentResponse:
@@ -203,7 +210,9 @@ async def get_agent(
 
 
 @router.patch("/{agent_id}", response_model=AgentResponse)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def update_agent(
+    request: Request,
     agent_id: UUID,
     body: AgentUpdate,
     user: Annotated[UserProfile, Depends(get_current_user)],
@@ -251,7 +260,9 @@ async def update_agent(
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
 async def delete_agent(
+    request: Request,
     agent_id: UUID,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> Response:
