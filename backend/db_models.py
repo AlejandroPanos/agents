@@ -19,12 +19,22 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy import MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_N_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
 
 
 class Base(DeclarativeBase):
     """Base class for the application's SQLAlchemy models."""
+
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 class User(Base):
@@ -104,7 +114,7 @@ class Agent(Base):
     __table_args__ = (
         CheckConstraint(
             "provider IN ('anthropic', 'openai', 'google', 'deepseek')",
-            name="agents_provider_check",
+            name="ck_agents_provider",
         ),
         CheckConstraint(
             "temperature >= 0 AND temperature <= 2", name="ck_agents_temperature"
