@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
-import {
-  createAgent,
-  getModels,
-  type AgentProvider,
-  type AgentResponse,
-  type ModelOption,
-} from "../helpers/helpers";
+import { createAgent, getModels, type AgentProvider, type AgentResponse } from "../helpers/helpers";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -60,60 +55,44 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [provider, setProvider] = useState<AgentProvider | "">("");
   const [model, setModel] = useState("");
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [hasLoadedModels, setHasLoadedModels] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [modelError, setModelError] = useState("");
-  const [submitError, setSubmitError] = useState("");
+  const [validationError, setValidationError] = useState("");
   const [createdAgent, setCreatedAgent] = useState<AgentResponse | null>(null);
 
-  const availableProviders = useMemo(
-    () =>
-      providers.filter((option) => models.some((modelOption) => modelOption.provider === option)),
-    [models],
+  const modelsQuery = useQuery({
+    queryKey: ["models"],
+    queryFn: getModels,
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  const createAgentMutation = useMutation({
+    mutationFn: createAgent,
+    onSuccess: setCreatedAgent,
+  });
+
+  const models =
+    modelsQuery.data?.models.filter((option) => isAgentProvider(option.provider)) ?? [];
+  const availableProviders = providers.filter((option) =>
+    models.some((modelOption) => modelOption.provider === option),
   );
-  const availableModels = models.filter((option) => option.provider === provider);
-  const isLoadingModels = open && !hasLoadedModels;
-
-  useEffect(() => {
-    if (!open || hasLoadedModels) {
-      return;
-    }
-
-    let cancelled = false;
-
-    getModels()
-      .then(({ models: responseModels }) => {
-        if (cancelled) {
-          return;
-        }
-
-        const validModels = responseModels.filter((option) => isAgentProvider(option.provider));
-        const validProviders = providers.filter((option) =>
-          validModels.some((modelOption) => modelOption.provider === option),
-        );
-        setModels(validModels);
-        setProvider(validProviders[0] ?? "");
-        setModel(validModels[0]?.model_id ?? "");
-        if (validModels.length === 0) {
-          setModelError("No compatible models are available. Configure an enabled model first.");
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setModelError(getErrorMessage(error, "Could not load available models."));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setHasLoadedModels(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasLoadedModels, open]);
+  const selectedProvider =
+    provider && availableProviders.includes(provider) ? provider : (availableProviders[0] ?? "");
+  const availableModels = models.filter((option) => option.provider === selectedProvider);
+  const selectedModel = availableModels.some((option) => option.model_id === model)
+    ? model
+    : (availableModels[0]?.model_id ?? "");
+  const isLoadingModels = modelsQuery.isLoading;
+  const modelError = modelsQuery.isError
+    ? getErrorMessage(modelsQuery.error, "Could not load available models.")
+    : modelsQuery.isSuccess && models.length === 0
+      ? "No compatible models are available. Configure an enabled model first."
+      : "";
+  const submitError =
+    validationError ||
+    (createAgentMutation.isError
+      ? getErrorMessage(createAgentMutation.error, "Could not create the agent. Please try again.")
+      : "");
+  const isSubmitting = createAgentMutation.isPending;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (isSubmitting && !nextOpen) {
@@ -125,13 +104,18 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
       setSystemPrompt("");
       setProvider("");
       setModel("");
-      setModels([]);
-      setHasLoadedModels(false);
-      setModelError("");
-      setSubmitError("");
+      setValidationError("");
+      createAgentMutation.reset();
       setCreatedAgent(null);
     }
     onOpenChange(nextOpen);
+  };
+
+  const clearSubmitError = () => {
+    setValidationError("");
+    if (createAgentMutation.isError) {
+      createAgentMutation.reset();
+    }
   };
 
   const handleProviderChange = (nextProvider: string) => {
@@ -140,36 +124,28 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
     }
 
     setProvider(nextProvider);
-    setModel(models.find((option) => option.provider === nextProvider)?.model_id ?? "");
-    setSubmitError("");
+    setModel("");
+    clearSubmitError();
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitError("");
+    setValidationError("");
 
     const trimmedName = name.trim();
     const trimmedSystemPrompt = systemPrompt.trim();
-    if (!trimmedName || !trimmedSystemPrompt || !provider || !model) {
-      setSubmitError("Complete all required fields and choose an available model.");
+    if (!trimmedName || !trimmedSystemPrompt || !selectedProvider || !selectedModel) {
+      setValidationError("Complete all required fields and choose an available model.");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const agent = await createAgent({
-        name: trimmedName,
-        description: description.trim() || null,
-        system_prompt: trimmedSystemPrompt,
-        provider,
-        model,
-      });
-      setCreatedAgent(agent);
-    } catch (error: unknown) {
-      setSubmitError(getErrorMessage(error, "Could not create the agent. Please try again."));
-    } finally {
-      setIsSubmitting(false);
-    }
+    createAgentMutation.mutate({
+      name: trimmedName,
+      description: description.trim() || null,
+      system_prompt: trimmedSystemPrompt,
+      provider: selectedProvider,
+      model: selectedModel,
+    });
   };
 
   return (
@@ -218,7 +194,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                   required
                   maxLength={100}
                   value={name}
-                  onChange={(event) => setName(event.currentTarget.value)}
+                  onChange={(event) => {
+                    setName(event.currentTarget.value);
+                    clearSubmitError();
+                  }}
                   placeholder="e.g. Research assistant"
                   className="h-10 rounded-lg border-[#e1e8e1] bg-[#fbfcfa] px-3"
                 />
@@ -232,7 +211,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                   id="agent-description"
                   name="description"
                   value={description}
-                  onChange={(event) => setDescription(event.currentTarget.value)}
+                  onChange={(event) => {
+                    setDescription(event.currentTarget.value);
+                    clearSubmitError();
+                  }}
                   placeholder="What this agent helps with"
                   className="h-10 rounded-lg border-[#e1e8e1] bg-[#fbfcfa] px-3"
                 />
@@ -247,7 +229,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                   name="system_prompt"
                   required
                   value={systemPrompt}
-                  onChange={(event) => setSystemPrompt(event.currentTarget.value)}
+                  onChange={(event) => {
+                    setSystemPrompt(event.currentTarget.value);
+                    clearSubmitError();
+                  }}
                   placeholder="Describe the agent's role, goals, and how it should respond."
                   rows={5}
                   className="min-h-28 resize-y rounded-lg border-[#e1e8e1] bg-[#fbfcfa] px-3"
@@ -263,7 +248,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                     id="agent-provider"
                     name="provider"
                     required
-                    value={provider}
+                    value={selectedProvider}
                     disabled={isLoadingModels || availableProviders.length === 0}
                     onChange={(event) => handleProviderChange(event.currentTarget.value)}
                     className="h-10 w-full rounded-lg border border-[#e1e8e1] bg-[#fbfcfa] px-3 text-xs text-[#344239] outline-none focus-visible:border-[#92b75f] focus-visible:ring-2 focus-visible:ring-[#92b75f]/20 disabled:cursor-not-allowed disabled:opacity-60"
@@ -287,11 +272,11 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                     id="agent-model"
                     name="model"
                     required
-                    value={model}
+                    value={selectedModel}
                     disabled={isLoadingModels || availableModels.length === 0}
                     onChange={(event) => {
                       setModel(event.currentTarget.value);
-                      setSubmitError("");
+                      clearSubmitError();
                     }}
                     className="h-10 w-full rounded-lg border border-[#e1e8e1] bg-[#fbfcfa] px-3 text-xs text-[#344239] outline-none focus-visible:border-[#92b75f] focus-visible:ring-2 focus-visible:ring-[#92b75f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -343,7 +328,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isLoadingModels || !provider || !model}
+                  disabled={isSubmitting || isLoadingModels || !selectedProvider || !selectedModel}
                   className="h-10 gap-2 rounded-lg bg-[#172a21] px-4 text-xs text-white hover:bg-[#263d30]"
                 >
                   {isSubmitting && <LoaderCircle size={14} className="animate-spin" />}
