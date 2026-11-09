@@ -1,29 +1,6 @@
 import { ArrowUpRight, Bot, Clock3 } from "lucide-react";
 import { Link } from "react-router";
-
-const agents = [
-  {
-    name: "Research assistant",
-    description: "Finds and summarizes information from your connected sources.",
-    status: "Active",
-    lastRun: "Ran 12 minutes ago",
-    runs: "42 runs",
-  },
-  {
-    name: "Inbox triage",
-    description: "Organizes incoming requests and drafts suggested responses.",
-    status: "Active",
-    lastRun: "Ran 1 hour ago",
-    runs: "86 runs",
-  },
-  {
-    name: "Release notes",
-    description: "Turns recent changes into clear, reader-friendly release notes.",
-    status: "Paused",
-    lastRun: "Ran yesterday",
-    runs: "18 runs",
-  },
-];
+import { agents } from "../data/agents";
 
 function AgentsPage() {
   return (
@@ -38,7 +15,7 @@ function AgentsPage() {
         </div>
         <div className="flex items-center gap-2 rounded-full border border-[#e7ebe7] bg-white px-3 py-1.5 text-[11px] text-[#627168]">
           <span className="size-1.5 rounded-full bg-[#83bd42]" />
-          2 active
+          {agents.filter((agent) => agent.status === "Active").length} active
         </div>
       </header>
 
@@ -50,19 +27,17 @@ function AgentsPage() {
           <h1 className="font-sans text-3xl font-semibold tracking-tight text-[#18231e] sm:text-4xl">
             Agents<span className="text-[#88b94f]">.</span>
           </h1>
-          <p className="mt-2 text-sm text-[#758279]">
-            Manage the agents that help get work done.
-          </p>
+          <p className="mt-2 text-sm text-[#758279]">Manage the agents that help get work done.</p>
         </div>
         <div className="rounded-lg border border-[#e3e9e3] bg-white px-3 py-2 text-xs text-[#647268]">
-          3 agents
+          {agents.length} {agents.length === 1 ? "agent" : "agents"}
         </div>
       </section>
 
       <section className="space-y-3" aria-label="Your agents">
         {agents.map((agent) => (
           <article
-            key={agent.name}
+            key={agent.id}
             className="flex flex-wrap items-center gap-4 rounded-xl border border-[#e9ede9] bg-white p-4 shadow-[0_2px_8px_rgba(27,45,34,0.025)] sm:p-5"
           >
             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#eff4e9] text-[#688452]">
@@ -92,16 +67,16 @@ function AgentsPage() {
                   <Clock3 size={12} />
                   {agent.lastRun}
                 </span>
-                <span>{agent.runs}</span>
+                <span>{agent.runs} runs</span>
               </div>
             </div>
-            <button
-              type="button"
+            <Link
+              to={`/agents/${agent.id}`}
               aria-label={`Open ${agent.name}`}
               className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[#87948b] transition-colors hover:bg-[#f3f6f2] hover:text-[#344b36]"
             >
               <ArrowUpRight size={17} />
-            </button>
+            </Link>
           </article>
         ))}
       </section>

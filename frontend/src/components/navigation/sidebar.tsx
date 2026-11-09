@@ -9,7 +9,7 @@ const navigation = [
 
 export function Sidebar() {
   return (
-    <aside className="flex w-[76px] shrink-0 flex-col bg-[#14251e] px-3 py-5 text-white sm:w-64 sm:px-5">
+    <aside className="flex w-19 shrink-0 flex-col bg-[#14251e] px-3 py-5 text-white sm:w-64 sm:px-5">
       <Link to="/" className="mb-6 flex items-center gap-3 px-1" aria-label="Agents home">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#c4f06b] text-[#17271f]">
           <Command size={22} />

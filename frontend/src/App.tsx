@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import AgentsPage from "./pages/agents";
+import AgentDetailPage from "./pages/agent-detail";
 import OverviewPage from "./pages/overview";
 import { Sidebar } from "./components/navigation/sidebar";
 
@@ -12,6 +13,7 @@ function App() {
           <Routes>
             <Route path="/" element={<OverviewPage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/agents/:agentId" element={<AgentDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
