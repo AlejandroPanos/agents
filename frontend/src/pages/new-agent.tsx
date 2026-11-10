@@ -1,8 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
-import { createAgent, getModels, type AgentProvider, type AgentResponse } from "../helpers/helpers";
+import {
+  createAgent,
+  getApiErrorMessage,
+  getModels,
+  type AgentProvider,
+  type AgentResponse,
+} from "../helpers/helpers";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -13,40 +18,22 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
+import { queryKeys } from "../lib/query-keys";
 
 interface NewAgentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
+const providers: AgentProvider[] = [
+  "anthropic",
+  "openai",
+  "google",
+  "deepseek",
+];
 
 function isAgentProvider(value: string): value is AgentProvider {
   return providers.some((provider) => provider === value);
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (!axios.isAxiosError<{ detail?: unknown }>(error)) {
-    return fallback;
-  }
-
-  const detail = error.response?.data?.detail;
-  if (typeof detail === "string") {
-    return detail;
-  }
-
-  if (Array.isArray(detail)) {
-    const messages = detail.flatMap((issue) =>
-      typeof issue === "object" && issue !== null && "msg" in issue && typeof issue.msg === "string"
-        ? [issue.msg]
-        : [],
-    );
-    if (messages.length > 0) {
-      return messages.join(" ");
-    }
-  }
-
-  return error.response ? fallback : "Could not connect to the backend. Please try again.";
 }
 
 function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
@@ -59,7 +46,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   const [createdAgent, setCreatedAgent] = useState<AgentResponse | null>(null);
 
   const modelsQuery = useQuery({
-    queryKey: ["models"],
+    queryKey: queryKeys.models,
     queryFn: getModels,
     enabled: open,
     staleTime: 5 * 60 * 1000,
@@ -71,26 +58,37 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   });
 
   const models =
-    modelsQuery.data?.models.filter((option) => isAgentProvider(option.provider)) ?? [];
+    modelsQuery.data?.models.filter((option) =>
+      isAgentProvider(option.provider),
+    ) ?? [];
   const availableProviders = providers.filter((option) =>
     models.some((modelOption) => modelOption.provider === option),
   );
   const selectedProvider =
-    provider && availableProviders.includes(provider) ? provider : (availableProviders[0] ?? "");
-  const availableModels = models.filter((option) => option.provider === selectedProvider);
-  const selectedModel = availableModels.some((option) => option.model_id === model)
+    provider && availableProviders.includes(provider)
+      ? provider
+      : (availableProviders[0] ?? "");
+  const availableModels = models.filter(
+    (option) => option.provider === selectedProvider,
+  );
+  const selectedModel = availableModels.some(
+    (option) => option.model_id === model,
+  )
     ? model
     : (availableModels[0]?.model_id ?? "");
   const isLoadingModels = modelsQuery.isLoading;
   const modelError = modelsQuery.isError
-    ? getErrorMessage(modelsQuery.error, "Could not load available models.")
+    ? getApiErrorMessage(modelsQuery.error, "Could not load available models.")
     : modelsQuery.isSuccess && models.length === 0
       ? "No compatible models are available. Configure an enabled model first."
       : "";
   const submitError =
     validationError ||
     (createAgentMutation.isError
-      ? getErrorMessage(createAgentMutation.error, "Could not create the agent. Please try again.")
+      ? getApiErrorMessage(
+          createAgentMutation.error,
+          "Could not create the agent. Please try again.",
+        )
       : "");
   const isSubmitting = createAgentMutation.isPending;
 
@@ -134,8 +132,15 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
 
     const trimmedName = name.trim();
     const trimmedSystemPrompt = systemPrompt.trim();
-    if (!trimmedName || !trimmedSystemPrompt || !selectedProvider || !selectedModel) {
-      setValidationError("Complete all required fields and choose an available model.");
+    if (
+      !trimmedName ||
+      !trimmedSystemPrompt ||
+      !selectedProvider ||
+      !selectedModel
+    ) {
+      setValidationError(
+        "Complete all required fields and choose an available model.",
+      );
       return;
     }
 
@@ -159,8 +164,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                 Agent created
               </DialogTitle>
               <DialogDescription className="mt-2">
-                <span className="font-medium text-[#526157]">{createdAgent.name}</span> is ready in
-                your workspace.
+                <span className="font-medium text-[#526157]">
+                  {createdAgent.name}
+                </span>{" "}
+                is ready in your workspace.
               </DialogDescription>
             </DialogHeader>
             <Button
@@ -184,7 +191,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="agent-name" className="text-xs font-medium text-[#405046]">
+                <label
+                  htmlFor="agent-name"
+                  className="text-xs font-medium text-[#405046]"
+                >
                   Name <span className="text-[#8d4a3e]">*</span>
                 </label>
                 <Input
@@ -204,7 +214,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="agent-description" className="text-xs font-medium text-[#405046]">
+                <label
+                  htmlFor="agent-description"
+                  className="text-xs font-medium text-[#405046]"
+                >
                   Description <span className="text-[#91a096]">(optional)</span>
                 </label>
                 <Input
@@ -221,7 +234,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="agent-system-prompt" className="text-xs font-medium text-[#405046]">
+                <label
+                  htmlFor="agent-system-prompt"
+                  className="text-xs font-medium text-[#405046]"
+                >
                   Instructions <span className="text-[#8d4a3e]">*</span>
                 </label>
                 <Textarea
@@ -241,7 +257,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="agent-provider" className="text-xs font-medium text-[#405046]">
+                  <label
+                    htmlFor="agent-provider"
+                    className="text-xs font-medium text-[#405046]"
+                  >
                     Provider <span className="text-[#8d4a3e]">*</span>
                   </label>
                   <select
@@ -249,8 +268,12 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                     name="provider"
                     required
                     value={selectedProvider}
-                    disabled={isLoadingModels || availableProviders.length === 0}
-                    onChange={(event) => handleProviderChange(event.currentTarget.value)}
+                    disabled={
+                      isLoadingModels || availableProviders.length === 0
+                    }
+                    onChange={(event) =>
+                      handleProviderChange(event.currentTarget.value)
+                    }
                     className="h-10 w-full rounded-lg border border-[#e1e8e1] bg-[#fbfcfa] px-3 text-xs text-[#344239] outline-none focus-visible:border-[#92b75f] focus-visible:ring-2 focus-visible:ring-[#92b75f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {availableProviders.length === 0 && (
@@ -265,7 +288,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="agent-model" className="text-xs font-medium text-[#405046]">
+                  <label
+                    htmlFor="agent-model"
+                    className="text-xs font-medium text-[#405046]"
+                  >
                     Model <span className="text-[#8d4a3e]">*</span>
                   </label>
                   <select
@@ -280,7 +306,9 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                     }}
                     className="h-10 w-full rounded-lg border border-[#e1e8e1] bg-[#fbfcfa] px-3 text-xs text-[#344239] outline-none focus-visible:border-[#92b75f] focus-visible:ring-2 focus-visible:ring-[#92b75f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isLoadingModels && <option value="">Loading models…</option>}
+                    {isLoadingModels && (
+                      <option value="">Loading models…</option>
+                    )}
                     {!isLoadingModels && availableModels.length === 0 && (
                       <option value="">No models available</option>
                     )}
@@ -294,7 +322,10 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
               </div>
 
               {isLoadingModels && (
-                <p className="flex items-center gap-2 text-[11px] text-[#829087]" role="status">
+                <p
+                  className="flex items-center gap-2 text-[11px] text-[#829087]"
+                  role="status"
+                >
                   <LoaderCircle size={14} className="animate-spin" />
                   Loading available models…
                 </p>
@@ -328,10 +359,17 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isLoadingModels || !selectedProvider || !selectedModel}
+                  disabled={
+                    isSubmitting ||
+                    isLoadingModels ||
+                    !selectedProvider ||
+                    !selectedModel
+                  }
                   className="h-10 gap-2 rounded-lg bg-[#172a21] px-4 text-xs text-white hover:bg-[#263d30]"
                 >
-                  {isSubmitting && <LoaderCircle size={14} className="animate-spin" />}
+                  {isSubmitting && (
+                    <LoaderCircle size={14} className="animate-spin" />
+                  )}
                   {isSubmitting ? "Creating…" : "Create agent"}
                 </Button>
               </div>

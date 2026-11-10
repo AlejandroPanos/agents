@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Bot, Command, House, LogOut, Plus } from "lucide-react";
-import { Link, NavLink } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Bot, Command, House, LoaderCircle, LogOut, Plus } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router";
 import NewAgentModal from "../../pages/new-agent";
+import { getApiErrorMessage, logout, type UserProfile } from "../../helpers/helpers";
+import { queryKeys } from "../../lib/query-keys";
 import { Button } from "../ui/button";
 
 const navigation = [
@@ -9,8 +12,30 @@ const navigation = [
   { label: "Agents", to: "/agents", icon: Bot, end: false },
 ];
 
-export function Sidebar() {
+export function Sidebar({ user }: { user: UserProfile }) {
   const [isNewAgentOpen, setIsNewAgentOpen] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.currentUser, null);
+      queryClient.removeQueries({
+        predicate: (query) => query.queryKey[0] !== "auth",
+      });
+      navigate("/login", { replace: true });
+    },
+  });
+  const displayName = user.name || user.email || "User";
+  const initials = displayName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase();
+  const logoutError = logoutMutation.isError
+    ? getApiErrorMessage(logoutMutation.error, "Could not log out. Please try again.")
+    : "";
 
   return (
     <>
@@ -69,20 +94,47 @@ export function Sidebar() {
             type="button"
             variant="ghost"
             aria-label="Log out"
+            disabled={logoutMutation.isPending}
+            onClick={() => logoutMutation.mutate()}
             className="h-10 w-full justify-center gap-3 rounded-lg px-2 text-[11px] text-white/55 hover:bg-white/6 hover:text-white sm:justify-start sm:px-3"
           >
-            <LogOut size={19} />
-            <span className="hidden sm:inline">Log out</span>
+            {logoutMutation.isPending ? (
+              <LoaderCircle size={19} className="animate-spin" />
+            ) : (
+              <LogOut size={19} />
+            )}
+            <span className="hidden sm:inline">
+              {logoutMutation.isPending ? "Signing out…" : "Log out"}
+            </span>
           </Button>
 
+          {logoutError && (
+            <p
+              className="mt-2 wrap-break-word px-1 text-[10px] leading-4 text-[#f2a99a]"
+              role="alert"
+            >
+              {logoutError}
+            </p>
+          )}
+
           <div className="mt-4 flex items-center justify-center gap-3 border-t border-white/10 pt-4 sm:justify-start">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#31453a] font-sans text-xs font-semibold text-[#d3efb1]">
-              AP
-            </span>
+            {user.picture ? (
+              <img
+                src={user.picture}
+                alt=""
+                className="size-9 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#31453a] font-sans text-xs font-semibold text-[#d3efb1]">
+                {initials}
+              </span>
+            )}
             <span className="hidden min-w-0 flex-1 sm:block">
-              <span className="block truncate text-xs font-medium text-white/90">Alex Parker</span>
+              <span className="block truncate text-xs font-medium text-white/90">
+                {displayName}
+              </span>
               <span className="mt-0.5 block truncate text-[10px] text-white/40">
-                Personal workspace
+                {user.email ?? "Signed in"}
               </span>
             </span>
             <span className="hidden size-1.5 rounded-full bg-[#a9e85c] sm:block" />

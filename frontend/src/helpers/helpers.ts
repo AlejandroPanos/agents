@@ -98,13 +98,44 @@ export interface HealthResponse {
   version: string;
 }
 
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError<{ detail?: unknown }>(error)) {
+    return fallback;
+  }
+
+  const detail = error.response?.data?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail.flatMap((issue) =>
+      typeof issue === "object" &&
+      issue !== null &&
+      "msg" in issue &&
+      typeof issue.msg === "string"
+        ? [issue.msg]
+        : [],
+    );
+    if (messages.length > 0) {
+      return messages.join(" ");
+    }
+  }
+
+  return error.response
+    ? fallback
+    : "Could not connect to the backend. Please try again.";
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000",
   withCredentials: true,
 });
 
 export async function loginWithGoogle(idToken: string): Promise<UserProfile> {
-  const { data } = await api.post<UserProfile>("/auth/google", { id_token: idToken });
+  const { data } = await api.post<UserProfile>("/auth/google", {
+    id_token: idToken,
+  });
   return data;
 }
 
@@ -122,13 +153,17 @@ export async function createAgent(agent: AgentCreate): Promise<AgentResponse> {
   return data;
 }
 
-export async function listAgents(params?: PaginationParams): Promise<AgentResponse[]> {
+export async function listAgents(
+  params?: PaginationParams,
+): Promise<AgentResponse[]> {
   const { data } = await api.get<AgentResponse[]>("/agents", { params });
   return data;
 }
 
 export async function getAgent(agentId: string): Promise<AgentResponse> {
-  const { data } = await api.get<AgentResponse>(`/agents/${encodeURIComponent(agentId)}`);
+  const { data } = await api.get<AgentResponse>(
+    `/agents/${encodeURIComponent(agentId)}`,
+  );
   return data;
 }
 
@@ -188,7 +223,9 @@ export async function getConversation(
   return data;
 }
 
-export async function deleteConversation(conversationId: string): Promise<void> {
+export async function deleteConversation(
+  conversationId: string,
+): Promise<void> {
   await api.delete(`/conversations/${encodeURIComponent(conversationId)}`);
 }
 
