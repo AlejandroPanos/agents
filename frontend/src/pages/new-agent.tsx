@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import {
   createAgent,
@@ -37,6 +37,7 @@ function isAgentProvider(value: string): value is AgentProvider {
 }
 
 function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -54,7 +55,11 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   });
   const createAgentMutation = useMutation({
     mutationFn: createAgent,
-    onSuccess: setCreatedAgent,
+    onSuccess: (agent) => {
+      setCreatedAgent(agent);
+      queryClient.setQueryData(queryKeys.agent(agent.id), agent);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.agents });
+    },
   });
 
   const models =
