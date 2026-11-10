@@ -22,10 +22,7 @@ function LoginPage() {
   const loginError = googleError
     ? googleError
     : loginMutation.isError
-      ? getApiErrorMessage(
-          loginMutation.error,
-          "Sign-in failed. Please try again.",
-        )
+      ? getApiErrorMessage(loginMutation.error, "Sign-in failed. Please try again.")
       : "";
 
   return (
@@ -79,7 +76,7 @@ function LoginPage() {
         </g>
       </svg>
 
-      <section className="relative z-10 w-full max-w-[380px] rounded-2xl border border-white/[0.08] bg-[#171817] px-7 py-8 shadow-[0_24px_100px_rgba(0,0,0,0.65)] sm:px-8">
+      <section className="relative z-10 w-full max-w-95 rounded-2xl border border-white/8 bg-[#171817] px-7 py-8 shadow-[0_24px_100px_rgba(0,0,0,0.65)] sm:px-8">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-14 top-8 h-8 bg-[radial-gradient(circle,#45524a_1px,transparent_1px)] bg-size-[8px_8px] opacity-30"
@@ -103,9 +100,7 @@ function LoginPage() {
               <GoogleOAuthProvider clientId={clientId}>
                 <div
                   className={`flex min-h-11 justify-center transition-opacity ${
-                    loginMutation.isPending
-                      ? "pointer-events-none opacity-60"
-                      : ""
+                    loginMutation.isPending ? "pointer-events-none opacity-60" : ""
                   }`}
                   aria-busy={loginMutation.isPending}
                 >
@@ -122,9 +117,7 @@ function LoginPage() {
                       loginMutation.mutate(response.credential);
                     }}
                     onError={() => {
-                      setGoogleError(
-                        "Google sign-in could not be completed. Please try again.",
-                      );
+                      setGoogleError("Google sign-in could not be completed. Please try again.");
                     }}
                     theme="filled_blue"
                     size="large"
@@ -149,10 +142,7 @@ function LoginPage() {
           </div>
 
           {loginMutation.isPending && (
-            <p
-              className="mt-4 flex items-center gap-2 text-xs text-white/55"
-              role="status"
-            >
+            <p className="mt-4 flex items-center gap-2 text-xs text-white/55" role="status">
               <LoaderCircle size={14} className="animate-spin" />
               Signing in…
             </p>
@@ -168,9 +158,9 @@ function LoginPage() {
         </div>
 
         <div className="mt-8 flex items-center gap-3 text-[10px] tracking-[0.12em] text-white/25 uppercase">
-          <span className="h-px flex-1 bg-white/[0.08]" />
+          <span className="h-px flex-1 bg-white/8" />
           Secure access
-          <span className="h-px flex-1 bg-white/[0.08]" />
+          <span className="h-px flex-1 bg-white/8" />
         </div>
         <p className="mt-4 text-center text-[10px] leading-5 text-white/35">
           Continue only with your approved Google account.
