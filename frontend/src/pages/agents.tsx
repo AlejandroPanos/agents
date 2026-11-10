@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Bot, LoaderCircle } from "lucide-react";
 import { Link } from "react-router";
-import { getApiErrorMessage, listAgents } from "../helpers/helpers";
+import { getApiErrorMessage, listAllAgents } from "../helpers/helpers";
 import { queryKeys } from "../lib/query-keys";
 
 function AgentsPage() {
   const agentsQuery = useQuery({
     queryKey: queryKeys.agents,
-    queryFn: () => listAgents(),
+    queryFn: listAllAgents,
   });
   const agents = agentsQuery.data ?? [];
 

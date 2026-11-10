@@ -160,6 +160,20 @@ export async function listAgents(
   return data;
 }
 
+export async function listAllAgents(): Promise<AgentResponse[]> {
+  const pageSize = 100;
+  const agents: AgentResponse[] = [];
+
+  for (let offset = 0; ;) {
+    const page = await listAgents({ limit: pageSize, offset });
+    agents.push(...page);
+    if (page.length < pageSize) {
+      return agents;
+    }
+    offset += page.length;
+  }
+}
+
 export async function getAgent(agentId: string): Promise<AgentResponse> {
   const { data } = await api.get<AgentResponse>(
     `/agents/${encodeURIComponent(agentId)}`,
