@@ -163,7 +163,6 @@ export function Sidebar({ user }: { user: UserProfile }) {
           >
             <Button
               type="button"
-              variant="ghost"
               size="icon-lg"
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!isCollapsed}

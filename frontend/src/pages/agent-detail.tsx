@@ -4,6 +4,7 @@ import { Activity, ArrowLeft, Bot, Hash, LoaderCircle } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router";
 import { getAgent, getApiErrorMessage } from "../helpers/helpers";
 import { queryKeys } from "../lib/query-keys";
+import EditAgentModal from "./edit-agent";
 
 function AgentDetailPage() {
   const { agentId } = useParams();
@@ -102,6 +103,7 @@ function AgentDetailPage() {
             {agent.description || "No description provided."}
           </p>
         </div>
+        <EditAgentModal agent={agent} />
       </section>
 
       <section
