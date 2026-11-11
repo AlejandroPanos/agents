@@ -1,13 +1,33 @@
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowLeft, Bot, Hash, LoaderCircle } from "lucide-react";
-import { Link, Navigate, useParams } from "react-router";
-import { getAgent, getApiErrorMessage } from "../helpers/helpers";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity,
+  ArrowLeft,
+  Bot,
+  Hash,
+  LoaderCircle,
+  Trash2,
+} from "lucide-react";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
+import { useState } from "react";
+import { deleteAgent, getAgent, getApiErrorMessage } from "../helpers/helpers";
 import { queryKeys } from "../lib/query-keys";
 import EditAgentModal from "./edit-agent";
+import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 function AgentDetailPage() {
   const { agentId } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const agentQuery = useQuery({
     queryKey: queryKeys.agent(agentId ?? ""),
     queryFn: () =>
@@ -16,6 +36,27 @@ function AgentDetailPage() {
         : Promise.reject(new Error("Agent ID is required.")),
     enabled: Boolean(agentId),
   });
+  const deleteMutation = useMutation({
+    mutationFn: deleteAgent,
+    onSuccess: (_result, deletedAgentId) => {
+      queryClient.removeQueries({
+        queryKey: queryKeys.agent(deletedAgentId),
+        exact: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.agents });
+      navigate("/agents", { replace: true });
+    },
+  });
+
+  const handleDeleteDialogChange = (open: boolean) => {
+    if (deleteMutation.isPending && !open) {
+      return;
+    }
+    if (!open) {
+      deleteMutation.reset();
+    }
+    setIsDeleteDialogOpen(open);
+  };
 
   if (!agentId) {
     return <Navigate to="/agents" replace />;
@@ -103,7 +144,21 @@ function AgentDetailPage() {
             {agent.description || "No description provided."}
           </p>
         </div>
-        <EditAgentModal agent={agent} />
+        <div className="flex flex-wrap gap-2">
+          <EditAgentModal agent={agent} />
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              deleteMutation.reset();
+              setIsDeleteDialogOpen(true);
+            }}
+            className="h-9 gap-2 rounded-lg px-3 text-xs"
+          >
+            <Trash2 size={14} />
+            Delete agent
+          </Button>
+        </div>
       </section>
 
       <section
@@ -182,6 +237,57 @@ function AgentDetailPage() {
           </dl>
         </article>
       </section>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <DialogContent className="max-w-md rounded-xl border border-[#e5ebe4] bg-white p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="font-sans text-lg font-semibold text-[#25352a]">
+              Delete this agent?
+            </DialogTitle>
+            <DialogDescription className="mt-1">
+              This will permanently delete{" "}
+              <span className="font-medium text-[#526157]">{agent.name}</span>{" "}
+              and its associated conversations. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteMutation.isError && (
+            <p
+              className="rounded-lg bg-[#fbf2ef] px-3 py-2 text-xs text-[#944c3b]"
+              role="alert"
+            >
+              {getApiErrorMessage(
+                deleteMutation.error,
+                "Could not delete the agent. Please try again.",
+              )}
+            </p>
+          )}
+
+          <DialogFooter className="mt-2 flex-col-reverse sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteMutation.isPending}
+              onClick={() => handleDeleteDialogChange(false)}
+              className="h-10 rounded-lg px-4 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(agent.id)}
+              className="h-10 gap-2 rounded-lg px-4 text-xs"
+            >
+              {deleteMutation.isPending && (
+                <LoaderCircle size={14} className="animate-spin" />
+              )}
+              {deleteMutation.isPending ? "Deleting…" : "Delete agent"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
