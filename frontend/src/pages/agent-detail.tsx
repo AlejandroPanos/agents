@@ -1,13 +1,6 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Activity,
-  ArrowLeft,
-  Bot,
-  Hash,
-  LoaderCircle,
-  Trash2,
-} from "lucide-react";
+import { Activity, ArrowLeft, Bot, Hash, LoaderCircle, Trash2 } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { useState } from "react";
 import { deleteAgent, getAgent, getApiErrorMessage } from "../helpers/helpers";
@@ -23,6 +16,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 
+// Page component for displaying the details of a single agent.
 function AgentDetailPage() {
   const { agentId } = useParams();
   const navigate = useNavigate();
@@ -31,9 +25,7 @@ function AgentDetailPage() {
   const agentQuery = useQuery({
     queryKey: queryKeys.agent(agentId ?? ""),
     queryFn: () =>
-      agentId
-        ? getAgent(agentId)
-        : Promise.reject(new Error("Agent ID is required.")),
+      agentId ? getAgent(agentId) : Promise.reject(new Error("Agent ID is required.")),
     enabled: Boolean(agentId),
   });
   const deleteMutation = useMutation({
@@ -72,10 +64,7 @@ function AgentDetailPage() {
   }
 
   if (agentQuery.isError) {
-    if (
-      axios.isAxiosError(agentQuery.error) &&
-      agentQuery.error.response?.status === 404
-    ) {
+    if (axios.isAxiosError(agentQuery.error) && agentQuery.error.response?.status === 404) {
       return <Navigate to="/agents" replace />;
     }
 
@@ -92,10 +81,7 @@ function AgentDetailPage() {
           className="rounded-xl border border-[#f0d7d1] bg-[#fff8f6] px-5 py-4 text-sm text-[#944c3b]"
           role="alert"
         >
-          {getApiErrorMessage(
-            agentQuery.error,
-            "Could not load this agent. Please try again.",
-          )}
+          {getApiErrorMessage(agentQuery.error, "Could not load this agent. Please try again.")}
         </div>
       </div>
     );
@@ -118,9 +104,7 @@ function AgentDetailPage() {
             Agents
           </Link>
           <span className="text-[#c2c9c4]">/</span>
-          <span className="truncate font-medium text-[#425148]">
-            {agent.name}
-          </span>
+          <span className="truncate font-medium text-[#425148]">{agent.name}</span>
         </div>
         <Link
           to="/agents"
@@ -161,10 +145,7 @@ function AgentDetailPage() {
         </div>
       </section>
 
-      <section
-        className="mb-6 grid gap-3 sm:grid-cols-3"
-        aria-label="Agent configuration"
-      >
+      <section className="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Agent configuration">
         <article className="rounded-xl border border-[#e9ede9] bg-white p-5">
           <div className="flex items-center justify-between text-xs text-[#7b8980]">
             Provider
@@ -193,34 +174,26 @@ function AgentDetailPage() {
           <p className="mt-5 font-sans text-3xl font-semibold tracking-tight text-[#28352d]">
             {agent.max_tokens.toLocaleString()}
           </p>
-          <p className="mt-1 text-[10px] text-[#93a097]">
-            Temperature {agent.temperature}
-          </p>
+          <p className="mt-1 text-[10px] text-[#93a097]">Temperature {agent.temperature}</p>
         </article>
       </section>
 
       <section className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
         <article className="rounded-xl border border-[#e9ede9] bg-white p-5 sm:p-6">
-          <h2 className="font-sans text-sm font-semibold text-[#28352d]">
-            System instructions
-          </h2>
+          <h2 className="font-sans text-sm font-semibold text-[#28352d]">System instructions</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#758279]">
             {agent.system_prompt}
           </p>
         </article>
         <article className="rounded-xl border border-[#e9ede9] bg-white p-5 sm:p-6">
-          <h2 className="font-sans text-sm font-semibold text-[#28352d]">
-            Agent information
-          </h2>
+          <h2 className="font-sans text-sm font-semibold text-[#28352d]">Agent information</h2>
           <dl className="mt-4 space-y-3">
             <div className="flex items-center justify-between gap-3 text-xs">
               <dt className="flex items-center gap-2 text-[#89958d]">
                 <Hash size={14} />
                 Agent ID
               </dt>
-              <dd className="truncate font-mono text-[11px] text-[#526157]">
-                {agent.id}
-              </dd>
+              <dd className="truncate font-mono text-[11px] text-[#526157]">{agent.id}</dd>
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-[#edf0ed] pt-3 text-xs">
               <dt className="text-[#89958d]">Created</dt>
@@ -246,16 +219,13 @@ function AgentDetailPage() {
             </DialogTitle>
             <DialogDescription className="mt-1">
               This will permanently delete{" "}
-              <span className="font-medium text-[#526157]">{agent.name}</span>{" "}
-              and its associated conversations. This action cannot be undone.
+              <span className="font-medium text-[#526157]">{agent.name}</span> and its associated
+              conversations. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
           {deleteMutation.isError && (
-            <p
-              className="rounded-lg bg-[#fbf2ef] px-3 py-2 text-xs text-[#944c3b]"
-              role="alert"
-            >
+            <p className="rounded-lg bg-[#fbf2ef] px-3 py-2 text-xs text-[#944c3b]" role="alert">
               {getApiErrorMessage(
                 deleteMutation.error,
                 "Could not delete the agent. Please try again.",
@@ -280,9 +250,7 @@ function AgentDetailPage() {
               onClick={() => deleteMutation.mutate(agent.id)}
               className="h-10 gap-2 rounded-lg px-4 text-xs"
             >
-              {deleteMutation.isPending && (
-                <LoaderCircle size={14} className="animate-spin" />
-              )}
+              {deleteMutation.isPending && <LoaderCircle size={14} className="animate-spin" />}
               {deleteMutation.isPending ? "Deleting…" : "Delete agent"}
             </Button>
           </DialogFooter>
