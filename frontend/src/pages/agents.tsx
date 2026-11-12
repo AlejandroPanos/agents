@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { getApiErrorMessage, listAllAgents } from "../helpers/helpers";
 import { queryKeys } from "../lib/query-keys";
 
+// Page component for displaying the list of agents.
 function AgentsPage() {
   const agentsQuery = useQuery({
     queryKey: queryKeys.agents,
@@ -41,9 +42,7 @@ function AgentsPage() {
           <h1 className="font-sans text-3xl font-semibold tracking-tight text-[#18231e] sm:text-4xl">
             Agents<span className="text-[#88b94f]">.</span>
           </h1>
-          <p className="mt-2 text-sm text-[#758279]">
-            Manage the agents that help get work done.
-          </p>
+          <p className="mt-2 text-sm text-[#758279]">Manage the agents that help get work done.</p>
         </div>
         <div className="rounded-lg border border-[#e3e9e3] bg-white px-3 py-2 text-xs text-[#647268]">
           {agentsQuery.isLoading
@@ -64,19 +63,14 @@ function AgentsPage() {
           className="rounded-xl border border-[#f0d7d1] bg-[#fff8f6] px-5 py-4 text-sm text-[#944c3b]"
           role="alert"
         >
-          {getApiErrorMessage(
-            agentsQuery.error,
-            "Could not load your agents. Please try again.",
-          )}
+          {getApiErrorMessage(agentsQuery.error, "Could not load your agents. Please try again.")}
         </div>
       )}
 
       {agentsQuery.isSuccess && agents.length === 0 && (
         <div className="rounded-xl border border-dashed border-[#dfe6df] bg-white px-5 py-12 text-center">
           <Bot size={24} className="mx-auto mb-3 text-[#8b9b8e]" />
-          <h2 className="font-sans text-sm font-semibold text-[#405046]">
-            No agents yet
-          </h2>
+          <h2 className="font-sans text-sm font-semibold text-[#405046]">No agents yet</h2>
           <p className="mt-1 text-xs text-[#839087]">
             Create an agent to start building your workspace.
           </p>
@@ -95,9 +89,7 @@ function AgentsPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-sans text-sm font-semibold text-[#28352d]">
-                    {agent.name}
-                  </h2>
+                  <h2 className="font-sans text-sm font-semibold text-[#28352d]">{agent.name}</h2>
                   <span className="rounded-full bg-[#eff4e9] px-2 py-1 text-[10px] capitalize text-[#5b7448]">
                     {agent.provider}
                   </span>
@@ -107,9 +99,7 @@ function AgentsPage() {
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[#96a198]">
                   <span>Model: {agent.model}</span>
-                  <span>
-                    Created {new Date(agent.created_at).toLocaleDateString()}
-                  </span>
+                  <span>Created {new Date(agent.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               <Link
