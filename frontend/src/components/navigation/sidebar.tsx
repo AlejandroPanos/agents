@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   LogOut,
   Menu,
+  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -15,13 +16,18 @@ import {
 } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router";
 import NewAgentModal from "../../pages/new-agent";
-import { getApiErrorMessage, logout, type UserProfile } from "../../helpers/helpers";
+import {
+  getApiErrorMessage,
+  logout,
+  type UserProfile,
+} from "../../helpers/helpers";
 import { queryKeys } from "../../lib/query-keys";
 import { Button } from "../ui/button";
 
 const navigation = [
   { label: "Overview", to: "/", icon: House, end: true },
   { label: "Agents", to: "/agents", icon: Bot, end: false },
+  { label: "Chat", to: "/chat", icon: MessageCircle, end: false },
 ];
 
 function SidebarTooltip({
@@ -37,7 +43,11 @@ function SidebarTooltip({
     <Tooltip.Root disabled={disabled}>
       <Tooltip.Trigger delay={150} render={children} />
       <Tooltip.Portal>
-        <Tooltip.Positioner side="right" sideOffset={8} className="z-60 hidden lg:block">
+        <Tooltip.Positioner
+          side="right"
+          sideOffset={8}
+          className="z-60 hidden lg:block"
+        >
           <Tooltip.Popup className="rounded-md border border-white/10 bg-[#263d30] px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg">
             {label}
           </Tooltip.Popup>
@@ -71,7 +81,10 @@ export function Sidebar({ user }: { user: UserProfile }) {
     .join("")
     .toUpperCase();
   const logoutError = logoutMutation.isError
-    ? getApiErrorMessage(logoutMutation.error, "Could not log out. Please try again.")
+    ? getApiErrorMessage(
+        logoutMutation.error,
+        "Could not log out. Please try again.",
+      )
     : "";
 
   return (
@@ -170,7 +183,11 @@ export function Sidebar({ user }: { user: UserProfile }) {
               onClick={() => setIsCollapsed((collapsed) => !collapsed)}
               className="hidden size-8 rounded-md border border-[#2b4338] bg-[#10251e] text-white/90 shadow-none hover:border-[#3a5849] hover:bg-[#193329] hover:text-white lg:flex"
             >
-              {isCollapsed ? <PanelLeftOpen size={21} /> : <PanelLeftClose size={21} />}
+              {isCollapsed ? (
+                <PanelLeftOpen size={21} />
+              ) : (
+                <PanelLeftClose size={21} />
+              )}
             </Button>
           </SidebarTooltip>
         </div>
@@ -183,7 +200,9 @@ export function Sidebar({ user }: { user: UserProfile }) {
             className={`relative mb-7 h-10 w-full justify-start gap-2 rounded-lg bg-[#c4f06b] px-3 text-[11px] font-semibold text-[#17271f] hover:bg-[#d2f68a] ${isCollapsed ? "lg:justify-center lg:px-2" : ""}`}
           >
             <Plus size={16} />
-            <span className={isCollapsed ? "lg:hidden" : ""}>Create new agent</span>
+            <span className={isCollapsed ? "lg:hidden" : ""}>
+              Create new agent
+            </span>
           </Button>
         </SidebarTooltip>
 
@@ -216,7 +235,9 @@ export function Sidebar({ user }: { user: UserProfile }) {
         </nav>
 
         <div className="mt-auto">
-          <div className={`mb-4 h-px bg-white/10 ${isCollapsed ? "lg:hidden" : ""}`} />
+          <div
+            className={`mb-4 h-px bg-white/10 ${isCollapsed ? "lg:hidden" : ""}`}
+          />
           <SidebarTooltip
             label={logoutMutation.isPending ? "Signing out…" : "Log out"}
             disabled={!isCollapsed}
@@ -263,7 +284,9 @@ export function Sidebar({ user }: { user: UserProfile }) {
                 {initials}
               </span>
             )}
-            <span className={`min-w-0 flex-1 ${isCollapsed ? "lg:hidden" : ""}`}>
+            <span
+              className={`min-w-0 flex-1 ${isCollapsed ? "lg:hidden" : ""}`}
+            >
               <span className="block truncate text-xs font-medium text-white/90">
                 {displayName}
               </span>
