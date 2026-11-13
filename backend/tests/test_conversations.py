@@ -107,6 +107,14 @@ class FakeDatabase:
                 if message["conversation_id"] != conversation_id
             ]
             return FakeCursor({"id": conversation_id})
+        if normalized.startswith("UPDATE conversations SET title = %s"):
+            title, conversation_id, user_id = parameters
+            conversation = self.conversations.get(conversation_id)
+            if conversation is None or conversation["user_id"] != user_id:
+                return FakeCursor()
+            conversation["title"] = title
+            conversation["updated_at"] = datetime.now(timezone.utc)
+            return FakeCursor(conversation)
         if normalized.startswith("SELECT role, content FROM messages"):
             conversation_id = parameters[0]
             return FakeCursor(
@@ -254,6 +262,12 @@ def test_conversation_and_message_lifecycle(
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [conversation_id]
 
+    renamed = client.patch(
+        f"/conversations/{conversation_id}", json={"title": "Updated title"}
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "Updated title"
+
     deleted = client.delete(f"/conversations/{conversation_id}")
     assert deleted.status_code == 204
     assert client.get(f"/conversations/{conversation_id}").status_code == 404
@@ -273,6 +287,26 @@ def test_conversation_routes_enforce_ownership(
     assert (
         client.delete(f"/conversations/{other_conversation['id']}").status_code == 404
     )
+    assert (
+        client.patch(
+            f"/conversations/{other_conversation['id']}",
+            json={"title": "Changed"},
+        ).status_code
+        == 404
+    )
+
+
+def test_conversation_rename_rejects_blank_title(
+    conversation_client: tuple[TestClient, FakeDatabase],
+) -> None:
+    client, _ = conversation_client
+    created = client.post(f"/agents/{AGENT_ID}/conversations", json={"title": "Existing"})
+
+    response = client.patch(
+        f"/conversations/{created.json()['id']}", json={"title": "   "}
+    )
+
+    assert response.status_code == 422
 
 
 def test_conversation_creation_requires_an_owned_agent(

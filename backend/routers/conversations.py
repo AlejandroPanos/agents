@@ -37,6 +37,18 @@ class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
 
 
+class ConversationUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def strip_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Conversation title cannot be blank")
+        return value
+
+
 class ConversationResponse(BaseModel):
     id: UUID
     agent_id: UUID
@@ -364,6 +376,33 @@ async def get_conversation(
     return ConversationWithMessages.model_validate(
         {**conversation, "messages": messages}
     )
+
+
+@router.patch(
+    "/conversations/{conversation_id}", response_model=ConversationResponse
+)
+@limiter.limit(ENDPOINT_RATE_LIMIT)
+async def update_conversation(
+    request: Request,
+    conversation_id: UUID,
+    body: ConversationUpdate,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ConversationResponse:
+    async with _connect_conversations_db() as db:
+        user_id = await _database_user_id(db, user)
+        cursor = await db.execute(
+            f"""
+            UPDATE conversations
+            SET title = %s, updated_at = now()
+            WHERE id = %s AND user_id = %s
+            RETURNING {CONVERSATION_COLUMNS}
+            """,
+            (body.title, conversation_id, user_id),
+        )
+        conversation = await cursor.fetchone()
+    if conversation is None:
+        raise _not_found()
+    return ConversationResponse.model_validate(conversation)
 
 
 @router.delete(
