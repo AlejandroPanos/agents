@@ -55,6 +55,10 @@ export interface ConversationCreate {
   title?: string | null;
 }
 
+export interface ConversationUpdate {
+  title: string;
+}
+
 export interface ConversationResponse {
   id: string;
   agent_id: string;
@@ -233,6 +237,17 @@ export async function getConversation(
 ): Promise<ConversationWithMessages> {
   const { data } = await api.get<ConversationWithMessages>(
     `/conversations/${encodeURIComponent(conversationId)}`,
+  );
+  return data;
+}
+
+export async function updateConversation(
+  conversationId: string,
+  changes: ConversationUpdate,
+): Promise<ConversationResponse> {
+  const { data } = await api.patch<ConversationResponse>(
+    `/conversations/${encodeURIComponent(conversationId)}`,
+    changes,
   );
   return data;
 }
