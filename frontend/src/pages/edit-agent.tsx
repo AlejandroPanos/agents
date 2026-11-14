@@ -25,6 +25,7 @@ interface EditAgentModalProps {
   agent: AgentResponse;
 }
 
+// List of supported agent providers.
 const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
 
 // Utility function to check if a string is a valid agent provider.
