@@ -25,17 +25,13 @@ interface EditAgentModalProps {
   agent: AgentResponse;
 }
 
-const providers: AgentProvider[] = [
-  "anthropic",
-  "openai",
-  "google",
-  "deepseek",
-];
+const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
 
 function isAgentProvider(value: string): value is AgentProvider {
   return providers.some((provider) => provider === value);
 }
 
+// Component for editing an existing agent's details in a modal dialog.
 function EditAgentModal({ agent }: EditAgentModalProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -55,13 +51,8 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
     retry: 1,
   });
   const updateMutation = useMutation({
-    mutationFn: ({
-      agentId,
-      changes,
-    }: {
-      agentId: string;
-      changes: AgentUpdate;
-    }) => updateAgent(agentId, changes),
+    mutationFn: ({ agentId, changes }: { agentId: string; changes: AgentUpdate }) =>
+      updateAgent(agentId, changes),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.agent(updated.id), updated);
       void queryClient.invalidateQueries({ queryKey: queryKeys.agents });
@@ -71,24 +62,18 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
 
   const availableModels =
     modelsQuery.data?.models.filter(
-      (option) =>
-        option.provider === provider && isAgentProvider(option.provider),
+      (option) => option.provider === provider && isAgentProvider(option.provider),
     ) ?? [];
   const providerOptions = providers.filter(
     (option) =>
       option === agent.provider ||
-      modelsQuery.data?.models.some(
-        (modelOption) => modelOption.provider === option,
-      ),
+      modelsQuery.data?.models.some((modelOption) => modelOption.provider === option),
   );
   const isPending = updateMutation.isPending;
   const errorMessage =
     validationMessage ||
     (updateMutation.isError
-      ? getApiErrorMessage(
-          updateMutation.error,
-          "Could not update the agent. Please try again.",
-        )
+      ? getApiErrorMessage(updateMutation.error, "Could not update the agent. Please try again.")
       : "");
 
   const resetForm = () => {
@@ -186,10 +171,8 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
                 </DialogTitle>
                 <DialogDescription className="mt-2">
                   Your changes to{" "}
-                  <span className="font-medium text-[#526157]">
-                    {updatedAgent.name}
-                  </span>{" "}
-                  have been saved.
+                  <span className="font-medium text-[#526157]">{updatedAgent.name}</span> have been
+                  saved.
                 </DialogDescription>
               </DialogHeader>
               <Button
@@ -213,10 +196,7 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label
-                    htmlFor="edit-agent-name"
-                    className="text-xs font-medium text-[#405046]"
-                  >
+                  <label htmlFor="edit-agent-name" className="text-xs font-medium text-[#405046]">
                     Name <span className="text-[#8d4a3e]">*</span>
                   </label>
                   <Input
@@ -239,8 +219,7 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
                     htmlFor="edit-agent-description"
                     className="text-xs font-medium text-[#405046]"
                   >
-                    Description{" "}
-                    <span className="text-[#91a096]">(optional)</span>
+                    Description <span className="text-[#91a096]">(optional)</span>
                   </label>
                   <Input
                     id="edit-agent-description"
@@ -334,13 +313,9 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
                       }}
                       className="h-10 w-full rounded-lg border border-[#e1e8e1] bg-[#fbfcfa] px-3 text-xs text-[#344239] outline-none focus-visible:border-[#92b75f] focus-visible:ring-2 focus-visible:ring-[#92b75f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {!availableModels.some(
-                        (option) => option.model_id === agent.model,
-                      ) &&
+                      {!availableModels.some((option) => option.model_id === agent.model) &&
                         provider === agent.provider && (
-                          <option value={agent.model}>
-                            {agent.model} (currently configured)
-                          </option>
+                          <option value={agent.model}>{agent.model} (currently configured)</option>
                         )}
                       {availableModels.map((option) => (
                         <option key={option.model_id} value={option.model_id}>
@@ -352,10 +327,7 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
                 </div>
 
                 {modelsQuery.isLoading && (
-                  <p
-                    className="flex items-center gap-2 text-[11px] text-[#829087]"
-                    role="status"
-                  >
+                  <p className="flex items-center gap-2 text-[11px] text-[#829087]" role="status">
                     <LoaderCircle size={14} className="animate-spin" />
                     Loading available models…
                   </p>
@@ -395,9 +367,7 @@ function EditAgentModal({ agent }: EditAgentModalProps) {
                     disabled={isPending || modelsQuery.isLoading}
                     className="h-10 gap-2 rounded-lg bg-[#172a21] px-4 text-xs text-white hover:bg-[#263d30]"
                   >
-                    {isPending && (
-                      <LoaderCircle size={14} className="animate-spin" />
-                    )}
+                    {isPending && <LoaderCircle size={14} className="animate-spin" />}
                     {isPending ? "Saving…" : "Save changes"}
                   </Button>
                 </div>
