@@ -27,6 +27,7 @@ interface EditAgentModalProps {
 
 const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
 
+// Utility function to check if a string is a valid agent provider.
 function isAgentProvider(value: string): value is AgentProvider {
   return providers.some((provider) => provider === value);
 }
