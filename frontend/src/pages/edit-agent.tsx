@@ -21,6 +21,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 
+// Props for the EditAgentModal component.
 interface EditAgentModalProps {
   agent: AgentResponse;
 }
