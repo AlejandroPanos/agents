@@ -6,6 +6,7 @@ import { Command, LoaderCircle } from "lucide-react";
 import { getApiErrorMessage, loginWithGoogle } from "../helpers/helpers";
 import { queryKeys } from "../lib/query-keys";
 
+// LoginPage component for handling user login with Google OAuth.
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
