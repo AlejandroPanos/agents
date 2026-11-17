@@ -27,6 +27,7 @@ function LoginPage() {
       ? getApiErrorMessage(loginMutation.error, "Sign-in failed. Please try again.")
       : "";
 
+  // Render the login page with Google OAuth button and error messages.
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0b0c0b] px-4 py-10 font-sans text-white">
       <svg
