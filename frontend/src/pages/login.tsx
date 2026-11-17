@@ -20,6 +20,7 @@ function LoginPage() {
     },
   });
 
+  // Determine the appropriate login error message to display.
   const loginError = googleError
     ? googleError
     : loginMutation.isError
