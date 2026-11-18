@@ -26,6 +26,7 @@ interface NewAgentModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// List of supported agent providers.
 const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
 
 function isAgentProvider(value: string): value is AgentProvider {
