@@ -29,6 +29,7 @@ interface NewAgentModalProps {
 // List of supported agent providers.
 const providers: AgentProvider[] = ["anthropic", "openai", "google", "deepseek"];
 
+// Type guard to check if a string value is a valid AgentProvider.
 function isAgentProvider(value: string): value is AgentProvider {
   return providers.some((provider) => provider === value);
 }
