@@ -34,6 +34,7 @@ function isAgentProvider(value: string): value is AgentProvider {
   return providers.some((provider) => provider === value);
 }
 
+// NewAgentModal component for creating a new agent with specified provider, model, and system prompt.
 function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
