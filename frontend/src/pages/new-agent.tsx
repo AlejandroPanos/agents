@@ -45,6 +45,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   const [validationError, setValidationError] = useState("");
   const [createdAgent, setCreatedAgent] = useState<AgentResponse | null>(null);
 
+  // Fetch available models for the selected provider.
   const modelsQuery = useQuery({
     queryKey: queryKeys.models,
     queryFn: getModels,
