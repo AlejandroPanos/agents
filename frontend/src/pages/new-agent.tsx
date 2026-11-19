@@ -53,6 +53,8 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+
+  // Mutation for creating a new agent.
   const createAgentMutation = useMutation({
     mutationFn: createAgent,
     onSuccess: (agent) => {
