@@ -72,6 +72,8 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   const availableProviders = providers.filter((option) =>
     models.some((modelOption) => modelOption.provider === option),
   );
+
+  // Determine the selected provider and available models based on the current state and filtered data.
   const selectedProvider =
     provider && availableProviders.includes(provider) ? provider : (availableProviders[0] ?? "");
   const availableModels = models.filter((option) => option.provider === selectedProvider);
