@@ -94,6 +94,8 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
     : modelsQuery.isSuccess && models.length === 0
       ? "No compatible models are available. Configure an enabled model first."
       : "";
+
+  // Determine if there is a submit error based on validation and mutation state.
   const submitError =
     validationError ||
     (createAgentMutation.isError
