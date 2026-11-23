@@ -87,6 +87,8 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
 
   // Determine if models are currently being loaded.
   const isLoadingModels = modelsQuery.isLoading;
+
+  // Determine if there is an error with the models query.
   const modelError = modelsQuery.isError
     ? getApiErrorMessage(modelsQuery.error, "Could not load available models.")
     : modelsQuery.isSuccess && models.length === 0
