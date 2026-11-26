@@ -108,6 +108,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
   // Determine if the form is currently being submitted.
   const isSubmitting = createAgentMutation.isPending;
 
+  // Handle changes to the open state of the dialog.
   const handleOpenChange = (nextOpen: boolean) => {
     if (isSubmitting && !nextOpen) {
       return;
