@@ -126,6 +126,7 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
     onOpenChange(nextOpen);
   };
 
+  // Clear any submit errors.
   const clearSubmitError = () => {
     setValidationError("");
     if (createAgentMutation.isError) {
