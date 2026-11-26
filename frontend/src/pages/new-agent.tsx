@@ -104,6 +104,8 @@ function NewAgentModal({ open, onOpenChange }: NewAgentModalProps) {
           "Could not create the agent. Please try again.",
         )
       : "");
+
+  // Determine if the form is currently being submitted.
   const isSubmitting = createAgentMutation.isPending;
 
   const handleOpenChange = (nextOpen: boolean) => {
